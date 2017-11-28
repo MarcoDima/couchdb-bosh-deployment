@@ -1,0 +1,46 @@
+name: couchdb-service-broker
+version: 0+dev.8
+commit_hash: 1ba48e8
+uncommitted_changes: false
+jobs:
+- name: couchdb2
+  version: 620ce1274b73379461ff9f0715f6145afd1dbc7c
+  fingerprint: 620ce1274b73379461ff9f0715f6145afd1dbc7c
+  sha1: dca775f112c508ffff4f58f56568df6e6b505127
+packages:
+- name: autoconf
+  version: 51e038a6929fe4eeebc5dd9d12096aecf475cc38
+  fingerprint: 51e038a6929fe4eeebc5dd9d12096aecf475cc38
+  sha1: d9aef969572b100a2d33518b6e7054e377989823
+  dependencies: []
+- name: couchdb2
+  version: 740ba13102991eeb115c7eb126a53578a7acbf29
+  fingerprint: 740ba13102991eeb115c7eb126a53578a7acbf29
+  sha1: 018408d0d7fe0a574850991fc8ba7ddc8cf1bee4
+  dependencies:
+  - erlang19
+  - icu
+  - python36
+  - spidermonkey185
+- name: erlang19
+  version: 1e4c946e4a8008ffc140ce0ecc0db368bd492517
+  fingerprint: 1e4c946e4a8008ffc140ce0ecc0db368bd492517
+  sha1: 3a79c2c06745a8448a4ea4dbda39aaa9bf6e1c94
+  dependencies: []
+- name: icu
+  version: 9dbceb8f942be77c12a3402e442f1c4630699b55
+  fingerprint: 9dbceb8f942be77c12a3402e442f1c4630699b55
+  sha1: 9ca00319807439d11af30a5ab32f0779d0087eed
+  dependencies: []
+- name: python36
+  version: e0e1aae1022e391e21aef84ff2e29e1957db0abe
+  fingerprint: e0e1aae1022e391e21aef84ff2e29e1957db0abe
+  sha1: 60053ca341937108cfdc7297b178a36f35d4c9fb
+  dependencies: []
+- name: spidermonkey185
+  version: 82f5a95e498004916f13c5497d85c5772e03afe0
+  fingerprint: 82f5a95e498004916f13c5497d85c5772e03afe0
+  sha1: c278986eb83de2f94ed4c622734358102b0c5a43
+  dependencies:
+  - autoconf
+  - python36

@@ -1,0 +1,5 @@
+check process couchdb2
+  with pidfile /var/vcap/sys/run/couchdb2/pid
+  start program "/var/vcap/jobs/couchdb2/bin/ctl start"
+  stop program "/var/vcap/jobs/couchdb2/bin/ctl stop"
+  group vcap

@@ -1,0 +1,11 @@
+---
+name: couchdb2
+
+dependencies: 
+    - erlang19
+    - icu
+    - python36
+    - spidermonkey185
+
+files: 
+    - couchdb2/apache-couchdb-2.1.0.tar.gz

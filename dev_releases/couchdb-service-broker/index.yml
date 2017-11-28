@@ -1,0 +1,18 @@
+builds:
+  068e8a78-e7da-4501-6282-434be716ab28:
+    version: 0+dev.1
+  1f2de0cf-3dd2-4304-7e48-f746171dda8b:
+    version: 0+dev.3
+  48d49544-dee6-471a-636d-3ab52d5b6653:
+    version: 0+dev.5
+  65b24d82-0ce5-4c9e-6e8b-148086a1a11e:
+    version: 0+dev.4
+  b220b88e-b705-4791-51c9-f1d44a709069:
+    version: 0+dev.2
+  cbc8f0ee-5646-40bb-7c83-c91fcfcde530:
+    version: 0+dev.7
+  cc00d7f0-14d8-49d8-4379-1a18db837a37:
+    version: 0+dev.8
+  f3d1c9f4-795f-4b67-7902-a1d3a9b630d0:
+    version: 0+dev.6
+format-version: "2"

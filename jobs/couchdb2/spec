@@ -1,0 +1,32 @@
+---
+name: couchdb2
+
+templates: 
+    ctl.erb: bin/ctl
+    pre-start.erb: bin/pre-start
+    post-start.erb: bin/post-start
+    post-deploy.erb: bin/post-deploy
+    local.ini: bin/local.ini
+
+packages: 
+    - couchdb2
+    - erlang19
+    - icu
+    - spidermonkey185
+    - python36
+
+properties: 
+  couchdb.auth.username:
+    description: "User name of user to create"
+    default: admin
+  couchdb.auth.password:
+    description: "User name of user to create"
+    default: admin
+
+provides:
+  - name: db
+    type: couchdb  
+
+consumes:
+  - name: db
+    type: couchdb

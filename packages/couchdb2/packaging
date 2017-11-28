@@ -1,0 +1,21 @@
+set -e
+
+cp -r couchdb2/apache-couchdb-2.1.0.tar.gz ${BOSH_INSTALL_TARGET}
+
+cd ${BOSH_INSTALL_TARGET}
+ls 
+pwd
+
+export HOME=/var/vcap 
+
+PATH=/var/vcap/packages/spidermonkey185/bin:$PATH
+PATH=/var/vcap/packages/erlang19/bin:$PATH
+PATH=/var/vcap/packages/icu/bin:$PATH
+PATH=/usr/bin:$PATH
+PATH=/usr/local:$PATH
+PATH=/usr/lib/erlang/bin:$PATH
+
+LD_LIBRARY_PATH=/var/vcap/packages/icu/include:/var/vcap/packages/icu/lib
+
+echo "Extracting apache couchdb-2.1.0 ..."
+tar xvf apache-couchdb-2.1.0.tar.gz

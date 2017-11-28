@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# view log file to see what went wrong
+# vim /var/vcap/sys/log/couchdb2/post-start.stdout.log
+
+RUN_DIR=/var/vcap/sys/run/couchdb2
+LOG_DIR=/var/vcap/sys/log/couchdb2
+PIDFILE=${RUN_DIR}/pid  
+
+HOST=http://127.0.0.1:5984
+ADMIN=<%= p("couchdb.auth.username") %>
+PASSWORD=<%= p("couchdb.auth.password") %>
+export HOME=/var/vcap:$HOME 
+RUNAS=vcap 
+IP_SPACE=$(hostname -I)
+IP="$(echo -e "${IP_SPACE}" | tr -d '[:space:]')"
+NUM_NODES=<%= link('db').instances.size %>
+NODENAME=couchdb@$(hostname -I)
+
+	#### Create admin user for couchDB ####
+	
+	curl -X PUT $HOST/_node/couchdb@$IP/_config/admins/$ADMIN -d '"<%= p("couchdb.auth.password") %>"'\
+	>> $LOG_DIR/post-start.stdout.log
+
+	### cluster_coordination_node: ip addresse of the node that will set up the cluster in the post-deploy script
+
+	touch /var/vcap/cluster_coordination_node
+	echo "<%= link('db').instances[0].address %>" > /var/vcap/cluster_coordination_node
+
+	#### Enable Cluster Configuration (on all nodes) ####
+	
+	curl -X POST -H "Content-Type: application/json" http://$ADMIN:$PASSWORD@127.0.0.1:5984/_cluster_setup -d '{"action": "enable_cluster", "bind_address":"0.0.0.0", "username": "<%= p("couchdb.auth.username") %>", "password":"<%= p("couchdb.auth.password") %>", "node_count":"$NUM_NODE"}'\
+	>> $LOG_DIR/post-start.stdout.log
+	echo "Cluster is now enabled" >> $LOG_DIR/post-start.stdout.log
+	
+exit 0

@@ -1,0 +1,17 @@
+set -e
+
+cp -r python36/Python-3.6.3.tgz ${BOSH_INSTALL_TARGET}
+
+cd ${BOSH_INSTALL_TARGET}
+ls 
+pwd
+
+echo "Extracting Python-3.6.3 ..."
+tar -xvzf Python-3.6.3.tgz
+
+cd Python-3.6.3
+echo "Building Python-3.6.3 ..."
+(
+    ./configure --prefix=${BOSH_INSTALL_TARGET} --enable-optimizations
+    make && make install
+)

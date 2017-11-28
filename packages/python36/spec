@@ -1,0 +1,7 @@
+---
+name: python36
+
+dependencies: []
+
+files: 
+    - python36/Python-3.6.3.tgz

@@ -1,0 +1,9 @@
+---
+name: spidermonkey185
+
+dependencies: 
+    - autoconf
+    - python36
+
+files: 
+    - spidermonkey185/js185-1.0.0.tar.gz

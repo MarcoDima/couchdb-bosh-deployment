@@ -1,0 +1,19 @@
+set -e
+
+cp -r erlang19/otp_src_19.3.tar.gz ${BOSH_INSTALL_TARGET}
+
+cd ${BOSH_INSTALL_TARGET}
+ls
+pwd
+
+export HOME=/var/vcap
+
+echo "Extracting erlang otp_src_19.3 ..."
+tar -xvf otp_src_19.3.tar.gz
+
+cd otp_src_19.3
+echo "Building erlang otp_src_19.3 ..."
+(
+    ./configure --prefix=${BOSH_INSTALL_TARGET} --without-termcap
+    make && make install
+)

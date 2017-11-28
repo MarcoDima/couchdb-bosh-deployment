@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# view log file to see what went wrong
+# vim /var/vcap/sys/log/couchdb2/post-deploy.stdout.log
+
+RUN_DIR=/var/vcap/sys/run/couchdb2
+LOG_DIR=/var/vcap/sys/log/couchdb2
+PIDFILE=${RUN_DIR}/pid  
+
+HOST=http://127.0.0.1:5984
+ADMIN=<%= p("couchdb.auth.username") %>
+PASSWORD=<%= p("couchdb.auth.password") %>
+export HOME=/var/vcap:$HOME 
+RUNAS=vcap 
+IP_SPACE=$(hostname -I)
+IP="$(echo -e "${IP_SPACE}" | tr -d '[:space:]')"
+NUM_NODES=<%= link('db').instances.size %>
+NODENAME=couchdb@$(hostname -I)
+
+### Setting up Cluster Configuration ###
+
+if [ ! "OK" == $(tail -1 /var/vcap/cluster_coordination_node) ]; then
+    if [ $IP == $(head -1 /var/vcap/cluster_coordination_node) ]; then
+
+        ### Setting up Cluster ####
+        echo "<%= link('db').instances[0].address %>" >> $LOG_DIR/post-deploy.stdout.log 
+        <% link('db').instances.each do | instance | %>
+            if [ ! <%= instance.address %> == <%= link('db').instances[0].address %> ]; then
+                #echo "<%= instance.address %>" >> $LOG_DIR/post-deploy.stdout.log
+
+                curl -X POST -H "Content-Type: application/json" http://$ADMIN:$PASSWORD@127.0.0.1:5984/_cluster_setup -d '{"action": "enable_cluster", "bind_address":"0.0.0.0", "username": "<%= p("couchdb.auth.username") %>", "password":"<%= p("couchdb.auth.password") %>", "port": 15984, "node_count": "$NUM_NODE", "remote_node": "<%= instance.address %>", "remote_current_user": "<%= p("couchdb.auth.username") %>", "remote_current_password": "<%= p("couchdb.auth.password") %>" }'\
+                >> $LOG_DIR/post-deploy.stdout.log
+
+                curl -X POST -H "Content-Type: application/json" http://$ADMIN:$PASSWORD@127.0.0.1:5984/_cluster_setup -d '{"action": "add_node", "host":"<%= instance.address %>", "port": "5984", "username": "<%= p("couchdb.auth.username") %>", "password":"<%= p("couchdb.auth.password") %>"}'\
+                >> $LOG_DIR/post-deploy.stdout.log
+
+            fi	
+
+        <% end %>
+
+        curl -X POST -H "Content-Type: application/json" http://$ADMIN:$PASSWORD@127.0.0.1:5984/_cluster_setup -d '{"action": "finish_cluster"}'\
+        >> $LOG_DIR/post-deploy.stdout.log 
+
+        echo "OK" >> /var/vcap/cluster_coordination_node
+        echo "Cluster Successfully created!" >> $LOG_DIR/post-deploy.stdout.log
+    fi
+fi
+
+exit 0

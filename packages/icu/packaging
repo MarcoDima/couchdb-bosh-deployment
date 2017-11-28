@@ -1,0 +1,21 @@
+set -e
+
+cp -r icu/icu4c-52_1.tar.gz ${BOSH_INSTALL_TARGET}
+
+cd ${BOSH_INSTALL_TARGET}
+ls
+pwd
+
+export HOME=/var/vcap
+
+echo "Extracting icu4c-52_1.tar.gz ..."
+tar xzvf icu4c-52_1.tar.gz
+
+echo "Building icu4c-52_1 ..."
+cd icu/source
+chmod +x runConfigureICU configure install-sh 
+(
+    ./runConfigureICU Linux --prefix=${BOSH_INSTALL_TARGET} 
+    make && make install
+
+)

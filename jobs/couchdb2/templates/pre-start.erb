@@ -1,0 +1,104 @@
+#!/bin/bash
+
+# view log file to see what went wrong
+# vim /var/vcap/sys/log/couchdb2/pre-start.stderr.log
+# vim /var/vcap/sys/log/couchdb2/pre-start.stdout.log
+
+set -e 
+
+RUN_DIR=/var/vcap/sys/run/couchdb2
+LOG_DIR=/var/vcap/sys/log/couchdb2
+PIDFILE=${RUN_DIR}/pid  
+
+RUNAS=vcap
+export HOME=/var/vcap:$HOME 
+ERL_DIR=/var/vcap/packages/erlang19
+
+IP_SPACE=$(hostname -I)
+IP="$(echo -e "${IP_SPACE}" | tr -d '[:space:]')"
+
+cd $ERL_DIR/bin 
+FILE=`ls | head -1`
+
+if [ ! -f /usr/bin/$FILE ]; then
+    
+    # copying erlang to default linux installation directory
+    echo "Setting up erlang ..."
+    sudo cp -R $ERL_DIR/lib/* /usr/lib 
+    sudo cp -R $ERL_DIR/bin/* /usr/bin
+    echo "OK"
+
+    # copying python to default linux installation directory
+    echo "Setting up Python ..."
+    PYTH_DIR=/var/vcap/packages/python36
+
+    sudo cp -R $PYTH_DIR/bin/* /usr/bin
+    sudo cp -R $PYTH_DIR/lib/* /usr/lib
+    sudo cp -R $PYTH_DIR/include/* /usr/include
+    sudo cp -R $PYTH_DIR/share/man/man1/* /usr/share/man/man1 
+    echo "OK"
+
+    # copying spidermonkey to default linux installation directory
+    echo "Setting up Spidermonkey ..."     
+    JS_DIR=/var/vcap/packages/spidermonkey185
+    mkdir -p /usr/include/js
+    sudo cp -R $JS_DIR/include/js/* /usr/include/js
+    cd $JS_DIR/lib
+    ln -s $JS_DIR/lib/libmozjs185.so /usr/lib/libmozjs185.so
+    ln -s $JS_DIR/lib/libmozjs185.so.1.0 /usr/lib/libmozjs185.so.1.0
+    
+    sudo cp libmozjs185.so.1.0.0 libmozjs185-1.0.a /usr/lib
+    cd ..
+    sudo cp -R $JS_DIR/bin/* /usr/bin
+    echo "OK"
+
+    # copying icu4c-52_1 to default linux installation directory
+    echo "Setting up icu ..."    
+    ICU_DIR=/var/vcap/packages/icu 
+
+    sudo cp -R $ICU_DIR/share/man/man1/* /usr/share/man/man1
+    sudo cp -R $ICU_DIR/share/man/man8/* /usr/share/man/man8 
+    sudo cp -R $ICU_DIR/sbin/* /usr/sbin 
+    sudo cp -R $ICU_DIR/bin/* /usr/bin
+    sudo cp -R $ICU_DIR/lib/* /usr/lib
+    mkdir -p /usr/include/x86_64-linux-gnu
+    sudo cp -R $ICU_DIR/lib/* /usr/lib/x86_64-linux-gnu/  
+    sudo cp -R $ICU_DIR/include/* /usr/include 
+    sudo cp -R $ICU_DIR/include/* /usr/include/x86_64-linux-gnu/  
+    echo "OK"
+
+    ############ Install CouchDB ############
+
+    echo "Install Apache CouchDB ..."    
+    COUCHDB_DIR=/var/vcap/packages/couchdb2/apache-couchdb-2.1.0
+    cd $COUCHDB_DIR
+    sudo ./configure --disable-docs --disable-fauxton
+    sudo make release
+    echo "CouchDB successfully installed!"
+
+    sudo mkdir -p /opt/couchdb
+    # Creating CouchDB User 
+    echo "Creating user for CouchDB ..."
+    adduser --system \
+            --home /opt/couchdb \
+            --no-create-home \
+            --shell /bin/bash \
+            --group --gecos \
+            "CouchDB Administrator" couchdb
+ 
+    ### enable couchdb to communicate in cluster ###
+	
+    sed -i "s/-name couchdb@localhost/-name couchdb@$IP/" $COUCHDB_DIR/rel/couchdb/etc/vm.args
+    
+    sudo cp --force /var/vcap/jobs/couchdb2/bin/local.ini $COUCHDB_DIR/rel/couchdb/etc/local.ini 
+    sudo cp -R $COUCHDB_DIR/rel/couchdb/* /opt/couchdb/ 
+    find /opt/couchdb -type d -exec chmod 0770 {} \;
+    sudo chmod 0644 /opt/couchdb/etc/*
+    sudo chown -R $RUNAS:$RUNAS /opt/couchdb
+    echo "CouchDB User successfully created!"
+	
+else
+    echo "No dependencies need to be copied."
+fi 
+
+exit 0

@@ -1,0 +1,7 @@
+---
+name: icu
+
+dependencies: []
+
+files: 
+    - icu/icu4c-52_1.tar.gz

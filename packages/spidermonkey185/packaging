@@ -1,0 +1,23 @@
+set -e
+
+cp -r spidermonkey185/js185-1.0.0.tar.gz ${BOSH_INSTALL_TARGET}
+
+cd ${BOSH_INSTALL_TARGET}
+ls 
+pwd
+
+export HOME=/var/vcap
+export SHELL=/bin/bash
+
+PATH=/var/vcap/packages/autoconf/bin:$PATH
+PATH=/var/vcap/packages/python36/bin:$PATH
+
+echo "Extracting spidermonkey-1.8.5 ..."
+tar -xvzf js185-1.0.0.tar.gz
+
+cd js-1.8.5/js/src
+echo "Building  spidermonkey-1.8.5 ..."
+(
+    ./configure --prefix=${BOSH_INSTALL_TARGET}
+    make && make install
+)

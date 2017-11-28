@@ -1,0 +1,11 @@
+set -e
+
+cp -r autoconf/autoconf-2.13.tar.gz ${BOSH_INSTALL_TARGET}
+
+cd ${BOSH_INSTALL_TARGET}
+ls
+pwd
+
+echo "Extracting autoconf-2.13.tar.gz ..."
+tar xfv autoconf-2.13.tar.gz
+
