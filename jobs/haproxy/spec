@@ -1,0 +1,289 @@
+---
+name: haproxy
+
+description: "The HAProxy server can be used to terminate SSL in front of the Routers. Each HAProxy instance should point to multiple Routers."
+
+packages:
+- haproxy
+- ttar
+
+templates:
+  haproxy.config.erb:         config/haproxy.config
+  haproxy_ctl:                bin/haproxy_ctl
+  monit_debugger:             bin/monit_debugger
+  certs.ttar.erb:             config/certs.ttar
+  ssl_redirect.map.erb:       config/ssl_redirect.map
+  backend-ca-certs.erb:       config/backend-ca-certs.pem
+  client-ca-certs.erb:        config/client-ca-certs.pem
+  backend-crt.erb:            config/backend-crt.pem
+  client-revocation-list.erb: config/client-revocation-list.pem
+  helpers/ctl_setup.sh:       helpers/ctl_setup.sh
+  helpers/ctl_utils.sh:       helpers/ctl_utils.sh
+  properties.sh.erb:          data/properties.sh
+  blacklist_cidrs.txt.erb:    config/blacklist_cidrs.txt
+  whitelist_cidrs.txt.erb:    config/whitelist_cidrs.txt
+
+consumes:
+  - name: http_backend
+    type: http-router
+    optional: true
+
+  - name: tcp_backend
+    type: ssh_proxy
+    optional: true
+
+  - name: db
+    type: couchdb
+    optional: false
+
+properties:
+  ha_proxy.threads:
+    description: "Optional number of threads per VM"
+    default: 1
+  ha_proxy.syslog_server:
+    description: "An IPv4 address optionally followed by a colon and a UDP port. It can also be an IPv6 address or filesystem path to a UNIX domain socket."
+    default: "127.0.0.1"
+  ha_proxy.log_level:
+    description: "Log level"
+    default: "info"
+  ha_proxy.buffer_size_bytes:
+    description: "Buffer size to use for requests, any requests larger than this (large cookies or query strings) will result in a gateway error"
+    default: 16384
+  ha_proxy.internal_only_domains:
+    description: "Array of domains for internal-only apps/services (not hostnames for the apps/services)"
+    default: []
+  ha_proxy.trusted_domain_cidrs:
+    description: "Space separated trusted cidr blocks for internal_only_domains"
+    default: 0.0.0.0/32
+  ha_proxy.ssl_pem:
+    description: |
+      Array of private keys and certificates used for TLS handshakes with downstream clients. Each element in the array is an object containing fields 'cert_chain' and 'private_key',
+      each of which supports a PEM block. Each element can also be a single string containing the cert chain and the private key.
+    example:
+      ssl_pem:
+      - cert_chain: |
+          -----BEGIN CERTIFICATE-----
+          -----END CERTIFICATE-----
+          -----BEGIN CERTIFICATE-----
+          -----END CERTIFICATE-----
+        private_key: |
+          -----BEGIN RSA PRIVATE KEY-----
+          -----END RSA PRIVATE KEY-----
+      - |
+        -----BEGIN CERTIFICATE-----
+        -----END CERTIFICATE-----
+        -----BEGIN CERTIFICATE-----
+        -----END CERTIFICATE-----
+        -----BEGIN RSA PRIVATE KEY-----
+        -----END RSA PRIVATE KEY-----
+    default: ~
+  ha_proxy.backend_ca_file:
+    description: "Optional SSL CA certificate chain (PEM file) concatenated together for backend SSL servers, only used when one of the `backend_ssl` options is set to `verify`"
+  ha_proxy.enable_health_check_http:
+    description: "Optionally enable http health-check on `haproxy_ip:8080/health`. It shows `200 OK` if >0 backend servers are up."
+    default: false
+  ha_proxy.disable_http:
+    description: "Disable port 80 traffic"
+    default: false
+  ha_proxy.enable_4443:
+    description: "Enables port 4443 for backwards compatibility with WSS-based apps using the old CF haproxy"
+    default: false
+  ha_proxy.https_redirect_domains:
+    description: "For each domain in this array, a HTTPS redirect rule will be put in the config file. Redirect will be applied for all subdomains"
+    default: []
+  ha_proxy.https_redirect_all:
+    description: "If this is set to 'true', a https redirect rule for all http calls will be put in the config file"
+    default: false
+  ha_proxy.ssl_ciphers:
+    default: ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
+    description: "List of SSL Ciphers that are passed to HAProxy"
+  ha_proxy.hsts_enable:
+    default: false
+    description: "Enables HSTS(Strict-Transport-Security Header) for all the SSL/TLS listeners"
+  ha_proxy.hsts_max_age:
+    default: 31536000
+    description: "max-age value for the Strict-Transport-Security header"
+  ha_proxy.hsts_include_subdomains:
+    default: false
+    description: "This enables the includeSubDomains flag for HSTS."
+  ha_proxy.hsts_preload:
+    default: false
+    description: "This enables the preload flag for HSTS"
+  ha_proxy.default_dh_param:
+    default: 2048
+    description: "Maximum size of DH params when generating epmehmeral keys during key exchange"
+  ha_proxy.disable_tls_tickets:
+    default: true
+    description: "Improve (Perfect) Forward Secrecy by disabling TLS tickets"
+  ha_proxy.disable_tls_10:
+    default: false
+    description: "Disable TLS 1.0 in HA Proxy"
+  ha_proxy.disable_tls_11:
+    default: false
+    description: "Disable TLS 1.1 in HA Proxy"
+
+  ha_proxy.connect_timeout:
+    description: "Timeout (in floating point seconds) used on connections from haproxy to a backend, while waiting for the TCP handshake to complete + connection to establish"
+    default:     5
+  ha_proxy.client_timeout:
+    description: "Timeout (in floating point seconds) used on connections from a client to haproxy that have gone inactive"
+    default:     30
+  ha_proxy.server_timeout:
+    description: "Timeout (in floating point seconds) used on connections from haproxy to a backend, while waiting for data from the backend"
+    default:     30
+  ha_proxy.websocket_timeout:
+    description: "Timeout (in floating point seconds) used on websocket/tunnel traffic, when both ends of the conversation have become inactive"
+    default:     3600
+  ha_proxy.keepalive_timeout:
+    description: "Timeout (in floating point seconds) applied to any connection that is in an http-keepalive state, waiting for the next request to occur"
+    default:     0.5
+  ha_proxy.request_timeout:
+    description: "Timeout (in floating point seconds) applied to any connection to limit the maximum time for a complete HTTP request (headers only). Used to limit DoS attacks that send data slowly to not trigger the client/server timeouts"
+    default:     5
+  ha_proxy.queue_timeout:
+    description: "Timeout (in floating point seconds) used on any connection sitting in the pending queue, waiting to be sent to the backend, to limit its time being queued"
+    default:     30
+
+  ha_proxy.stats_enable:
+    description: "If true, haproxy will enable a socket for stats. You can see the stats on `haproxy_ip:9000/haproxy_stats`. If multithreading is enabled (`ha_proxy.threads > 1`) haproxy will create a separate socket and stat page for each thread. Each stat page is reachable on a different port ranging from `9000` to `9000 + ha_proxy.threads - 1`."
+    default: false
+  ha_proxy.stats_bind:
+    description: "Define listening address and port for the stats frontend. If multithreading is enabled (`ha_proxy.threads > 1`) multiple stat pages are available - one for each thread. You can see the stat page for each thread on a separate port - starting at the defined port number."
+    default: "*:9000"
+  ha_proxy.stats_user:
+    description: "User name to authenticate haproxy stats"
+  ha_proxy.stats_password:
+    description: "Password to authenticate haproxy stats"
+  ha_proxy.stats_uri:
+    description: "URI used to access the stats UI."
+    default: "haproxy_stats"
+  ha_proxy.trusted_stats_cidrs:
+    description: "Trusted ip range that can access the stats UI"
+    default: 0.0.0.0/32
+
+  ha_proxy.backend_servers:
+    description: "Array of the router IPs acting as the HTTP/TCP backends (should include servers all Availability Zones being used)"
+    default: []
+  ha_proxy.backend_ssl:
+    description: "Optionally enable SSL verification for backend servers, one of `verify`, `noverify`, any other value assumes no ssl backend.  Setting `verify` requires `ha_proxy.backend_ca_file` key to be set."
+    default: "off"
+  ha_proxy.backend_ssl_verifyhost:
+    description: "Optional hostname to verify in the x509 certificate subject for SSL-enabled backend servers.  Requires `ha_proxy.backend_ssl` is set to `verify` when using this."
+  ha_proxy.backend_port:
+    description: "Listening port for Router"
+    default: 80
+  ha_proxy.compress_types:
+    description: "If this property is set, gzip compression will be activated for the mime types named in this property. definition like 'text/html text/plain text/css'"
+    default: ""
+  ha_proxy.routed_backend_servers:
+    description: "Hash of the URL prefixes -> array of the router IPs acting as the HTTP/TCP backends (should include servers all Availability Zones being used)"
+    default: {}
+    example:
+      routed_backend_servers:
+        /images:
+          servers: [10.0.0.2, 10.0.0.3]  # required - list of backend IPs to connect to
+          port: 4443       # required - port haproxy should listen on
+          backend_ssl: "verify"  # optional - enables ssl backend, one of `verify`, `noverify`, any other value assumes no ssl backend.
+                                 # Setting `verify` requires `ha_proxy.backend_ca_file` key to be set.
+          backend_verifyhost: example.com # optional - hostname to verify in the x509 certificate subject for SSL-enabled backend servers
+                                          # only used if backend_ssl: `verify` is set
+  ha_proxy.headers:
+    description: "Hash of custom headers you wish you have set on each request. Spaces are automatically escaped, but any other haproxy delimiters will need to be escaped manually"
+    example: |
+      headers:
+        X-Application-ID: my-custom-header
+        MyCustomHeader: 3
+
+  ha_proxy.rsp_headers:
+    description: "Hash of custom headers you wish you have set on each request. Spaces are automatically escaped, but any other haproxy delimiters will need to be escaped manually"
+    example: |
+      rsp_headers:
+        X-Application-ID: my-custom-header
+        MyCustomHeader: 3
+
+  ha_proxy.backend_crt:
+    description: "provides client certificate to backend server to do mutual ssl"
+    example: |
+      -----BEGIN CERTIFICATE-----
+      ******
+      -----END CERTIFICATE-----
+      -----BEGIN PRIVATE KEY-----
+      ******
+      -----END PRIVATE KEY-----
+  ha_proxy.client_cert:
+    description: "Enable haproxy mutual auth and produce a client cert header (X-Forwarded-Client-Cert) to offload mutual ssl client certificate to backend"
+    default: false
+
+  ha_proxy.client_ca_file:
+    description: "path for CA certs to validate client certificate"
+    example: |
+      -----BEGIN CERTIFICATE-----
+      ******
+      -----END CERTIFICATE-----
+      -----BEGIN PRIVATE KEY-----
+      ******
+      -----END PRIVATE KEY-----
+
+  ha_proxy.client_cert_ignore_err:
+    description: "Error code(s) to ignore from verifying a client cert during a mutual ssl handshake, in a pipe-separated list. For example, 2 is if it cannot get the issuer certificate, 10 if the certificate has expired and 18 if the certificate is self-signed. The keyword 'all' will ignore all possible errors. See the openssl verify documentation [https://wiki.openssl.org/index.php/Manual:Verify(1)] for a full list of all error codes and their meanings."
+    example: 2|10|18
+
+  ha_proxy.client_revocation_list:
+    description: "provide a list of revocation certs"
+
+  ha_proxy.tcp:
+    description: "List of mappings to perform tcp-based proxying on. See example for mapping datastructure and keys"
+    default: []
+    example:
+      tcp:
+        - name: wss        # required - name of backend
+          port: 4443       # required - port haproxy should listen on
+          backend_servers: # required - list of backend IPs to connect to
+          - 10.20.10.10
+          - 10.20.10.11
+          balance: roundrobin # optional - sets algorithm used to select a server when doing load balancing
+          backend_port: 80 # optional - sets backend port - otherwise defaults to `port`
+          ssl: true        # optional - enables ssl, and uses the `ha_proxy.ssl_pem` provided key
+          backend_ssl: "verify"  # optional - enables ssl backend, one of `verify`, `noverify`, any other value assumes no ssl backend.
+                                 # Setting `verify` requires `ha_proxy.backend_ca_file` key to be set.
+          backend_verifyhost: example.com # optional - hostname to verify in the x509 certificate subject for SSL-enabled backend servers
+                                          # only used if backend_ssl: `verify` is set
+          health_check_http: 4444 # optional port number - if provided a heath check http site is created at `haproxy_ip:4444/health`.
+                                  # It shows `200 OK` if >0 backend servers are up.
+  ha_proxy.tcp_link_port:
+    description: "Port haproxy should listen on when using the tcp_backend link"
+  ha_proxy.tcp_link_health_check_http:
+    description: "Optional port for http health check when using the tcp_backend link."
+  ha_proxy.resolvers:
+    description: "List of DNS servers"
+    example:
+      resolvers:
+        private: 10.0.0.2
+        public: 8.8.8.8
+  ha_proxy.dns_hold:
+    description: "DNS Hold time"
+    default: 10s
+  ha_proxy.accept_proxy:
+    description: "Allow accept proxy"
+    default: false
+  ha_proxy.binding_ip:
+    description: "If there are multiple ethernet interfaces, specify which one to bind"
+    default: ""
+
+  ha_proxy.cidr_blacklist:
+    description: "List of CIDRs to block for http(s). Format is string array of CIDRs or single string of base64 encoded gzip."
+    default: ~
+    example:
+      cidr_blacklist:
+      - 10.0.0.0/8
+      - 192.168.2.0/24
+  ha_proxy.cidr_whitelist:
+    description: "List of CIDRs to allow for http(s). Format is string array of CIDRs or single string of base64 encoded gzip."
+    default: ~
+    example:
+      cidr_whitelist:
+      - 172.168.4.1/32
+      - 10.2.0.0/16
+  ha_proxy.block_all:
+    description: "Optionally block all incoming traffic to http(s). Use in conjunction with whitelist."
+    default: false

@@ -29,6 +29,14 @@ instance_groups:
   persistent_disk_type: default
   networks:
   - name: default
+- name: haproxy
+  instances: 1
+  vm_type: default
+  stemcell: default
+  networks:
+  - name: default
+  jobs:
+  - name: haproxy
 
 #- name: replset
 #  instances: 1
