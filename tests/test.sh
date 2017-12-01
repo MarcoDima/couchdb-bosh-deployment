@@ -23,9 +23,9 @@ RAND_NUM=$(shuf -i3-5 -n1)
 
 function assertOk () {
     if [ $1 == $HTTP_STATUS_OK ];then
-        echo -e "Successfully got database\n"
+        echo -e "Successfully got database/document\n"
     else
-        echo "Could not get the database"
+        echo "Could not get the database/document"
         echo "Exiting ..."
         exit 1
     fi
@@ -33,9 +33,9 @@ function assertOk () {
 
 function assertDeleted () {
     if [ $1 == $HTTP_STATUS_ACCEPTED ];then
-        echo -e "Deleted database\n"
+        echo -e "Deleted database/document\n"
     else
-        echo "Could not delete the database"
+        echo "Could not delete the database/document"
         echo "Exiting ..."
         exit 1
     fi
@@ -53,15 +53,16 @@ function check_all_instances_running () {
         echo "OK"
         fi
         done
-    echo "All instances are running"
+    echo -e "All instances are running\n"
 }
+
 echo " "
 echo " "
 echo " "
 echo -e "\t###########################################################"
 echo -e "\t#                                                         #"
 echo -e "\t#\tStarting test on CouchDB Cluster under haproxy    #"
-echo -e "\t#\t        RUNNING ON: $RUNNING_VM                     #\n"
+echo -e "\t#\t        RUNNING ON: $RUNNING_VM                    #"
 echo -e "\t#                                                         #"
 echo -e "\t###########################################################\n"
 
@@ -70,9 +71,6 @@ echo -e "\t\tCreating database $DB (before node failure)"
 echo -e "\t###########################################################\n"
 
 echo "Creating db ..."
-#REQ_STATUS=$(curl -I -X PUT http://$COUCHDB_USER:$COUCHDB_PWD@$RUNNING_VM:$PORT/$DB | head -1 | awk '{print $2}')
-#echo $REQ_STATUS
-#assertCreated $REQ_STATUS
 echo -n -e $COUCHDB_SAY
 curl -X PUT http://$COUCHDB_USER:$COUCHDB_PWD@$RUNNING_VM:$PORT/$DB
 echo "Getting database from 10.244.0.$RAND_NUM"
@@ -84,11 +82,11 @@ echo -e "\t\tShutting down node on cluster "
 echo -e "\t#############################################\n"
 
 echo "Shutting down ..."
-NUM=$(shuf -i0-2 -n1)
+NUM=$(shuf -i1-3 -n1)
 
 IP_ADDRESS=$(bosh -e vbox instances | head -$NUM | tail -1 | awk '{print $4}')
-
-./fail_node.sh $NUM > $LOG_DIR
+INSTANCE_NAME=$(bosh -e vbox instances | head -$NUM | tail -1 | awk '{print $1}')
+./fail_node.sh $INSTANCE_NAME > $LOG_DIR
 
 sleep 10
 echo -e "\n OK \n"
@@ -112,10 +110,8 @@ echo -e "\t\tCreating database $FAIL_DB (after node failure) "
 echo -e "\t#################################################################\n"
 
 echo "Creating db ..."
-#REQ_STATUS=$(curl -I -X PUT http://$COUCHDB_USER:$COUCHDB_PWD@$RUNNING_VM:$PORT/$FAIL_DB | head -1 | awk '{print $2}')
 echo -n -e $COUCHDB_SAY
 curl -X PUT http://$COUCHDB_USER:$COUCHDB_PWD@$RUNNING_VM:$PORT/$FAIL_DB
-#assertCreated $REQ_STATUS
 
 echo -e "\n     ### Performing some requests to check forwarding on haproxy ... ###\n"
 
@@ -124,32 +120,31 @@ REQ_STATUS=$(curl -I -X GET http://$COUCHDB_USER:$COUCHDB_PWD@$RUNNING_VM:$PORT/
 assertOk $REQ_STATUS
 
 echo -e "\nWriting document in db $FAIL_DB ...\n"
-#REQ_STATUS=$(curl -I -X PUT http://$COUCHDB_USER:$COUCHDB_PWD@$RUNNING_VM:$PORT/$FAIL_DB/001 -d '{"name": "Marco"}' | head -1 | awk '{print $2}')
 echo -n -e $COUCHDB_SAY
 curl -X PUT -H "Content-type:application/json" http://$COUCHDB_USER:$COUCHDB_PWD@$RUNNING_VM:$PORT/$FAIL_DB/001 -d '{}'
-#assertCreated $REQ_STATUS
 
 echo -e "\nGetting document with id=001 in db $FAIL_DB ...\n"
 REQ_STATUS=$(curl -I -X GET http://$COUCHDB_USER:$COUCHDB_PWD@$RUNNING_VM:$PORT/$FAIL_DB/001 | head -1 | awk '{print $2}')
 assertOk $REQ_STATUS
 
-echo -e "\t##############################################"
+echo -e "\t############################################"
 echo -e "\t\tRecreate vm after failure      "
-echo -e "\t##############################################\n"
+echo -e "\t############################################\n"
 
 echo "Recreating vm ..."
-./restart_node.sh $NUM > $LOG_DIR 
+./restart_node.sh $INSTANCE_NAME > $LOG_DIR 
 
 sleep 10
 
 echo -e "\nChecking all instances are now running ...\n"
 check_all_instances_running
 
-echo -e "\t################################################################################"
+echo -e "\t############################################################################"
 echo -e "\t\tChecking all changes after failure were restored in failure node    "
-echo -e "\t################################################################################\n"
+echo -e "\t############################################################################\n"
 
 echo "Getting database $FAIL_DB from $IP_ADDRESS ..."
+sleep 10    # allow cluster to recognize the node and update it
 REQ_STATUS=$(curl -I -X GET http://$COUCHDB_USER:$COUCHDB_PWD@$IP_ADDRESS:$PORT/$FAIL_DB | head -1 | awk '{print $2}')
 assertOk $REQ_STATUS
 
@@ -158,10 +153,10 @@ REQ_STATUS=$(curl -I -X GET http://$COUCHDB_USER:$COUCHDB_PWD@$IP_ADDRESS:$PORT/
 assertOk $REQ_STATUS
 
 echo -e "All changes are present in previously failed node\n"
-
-echo -e "\t#################################################"
-echo -e  "\t\tDeleting databases from test "
-echo -e "\t#################################################\n"
+echo -e "Cluster and haproxy service work fine.\n"
+echo -e "\t######################################"
+echo -e  "\t\tDeleting databases "
+echo -e "\t######################################\n"
 
 curl -X DELETE http://$COUCHDB_USER:$COUCHDB_PWD@$RUNNING_VM:$PORT/$DB
 curl -X DELETE http://$COUCHDB_USER:$COUCHDB_PWD@$RUNNING_VM:$PORT/$FAIL_DB
